@@ -35,14 +35,6 @@ colours = [
 ]
 
 
-colours = [    '#BE2500',
-'#A89F62',
-'#0723BA',
-'#00816E',
-'#ECBB00',
-'#4F4618',
-'#EE0000',
-]
 
 
 PARAM_LABELS = {
@@ -265,8 +257,7 @@ if __name__ == "__main__":
     save_dir = os.path.join(current_dir, "analysis")
     os.makedirs(save_dir, exist_ok=True)
 
-    param_groups = [['sigma_2','t_2'],['t_1','t_2'],['infall_2','t_2'],['infall_1','t_2']]
-
+    param_groups = [['sigma_2','t_2'],['t_1','t_2'],['infall_1','infall_2'],['infall_2','t_2'],['infall_1','t_2']]
     for i, params in enumerate(param_groups):
         # Parameters for ellipse (change as needed)
         param1 = params[0]
@@ -280,163 +271,75 @@ if __name__ == "__main__":
         # Compute semimajor axis for each group
         all_gens = sorted(groups.keys())
         gens_kept = []
-        semimajors_combined = []
-        semimajors_single = []
+        semimajors = []
         skipped = []
 
         for gen in all_gens:
-            if gen < 256:
-                csv_list = groups[gen]
-                if not csv_list:
-                    skipped.append(gen)
-                    continue
+            csv_list = groups[gen]
+            if not csv_list:# or len(csv_list) < 2:
+                skipped.append(gen)
+                continue
 
-                # ----------------------------
-                # Solid line: combined across runs
-                # ----------------------------
-                analyzers = []
-                for csv_path in csv_list:
-                    out_root = os.path.dirname(csv_path) + os.sep
-                    analyzers.append(UncertaintyAnalysis(results_file=csv_path, output_path=out_root))
+            analyzers = []
+            for csv_path in csv_list:
+                out_root = os.path.dirname(csv_path) + os.sep
+                analyzers.append(UncertaintyAnalysis(results_file=csv_path, output_path=out_root))
 
-                T_comb, w_comb = _combined_top_selection(analyzers, [param1, param2],
-                                                         percentile=percentile, weight_power=weight_power)
-                if T_comb.empty or len(T_comb) < 8:
-                    print(f"Skipping gen {gen}: insufficient combined data points ({len(T_comb)}).")
-                    skipped.append(gen)
-                    continue
+            # Get combined data
+            T, w_comb = _combined_top_selection(analyzers, [param1, param2],
+                                                percentile=percentile, weight_power=weight_power)
+            if T.empty or len(T) < 8:
+                print(f"Skipping gen {gen}: insufficient combined data points ({len(T)}).")
+                skipped.append(gen)
+                continue
 
-                param_ranges_comb = _union_param_ranges(analyzers, [param1, param2])
-                lo_x_c, hi_x_c = param_ranges_comb.get(param1, (np.nanmin(T_comb[param1]), np.nanmax(T_comb[param1])))
-                lo_y_c, hi_y_c = param_ranges_comb.get(param2, (np.nanmin(T_comb[param2]), np.nanmax(T_comb[param2])))
-                if not (np.isfinite(lo_x_c) and np.isfinite(hi_x_c) and hi_x_c > lo_x_c and
-                        np.isfinite(lo_y_c) and np.isfinite(hi_y_c) and hi_y_c > lo_y_c):
-                    print(f"Skipping gen {gen}: invalid parameter ranges (combined).")
-                    skipped.append(gen)
-                    continue
+            # Union ranges and grid
+            param_ranges = _union_param_ranges(analyzers, [param1, param2])
+            lo_x, hi_x = param_ranges.get(param1, (np.nanmin(T[param1]), np.nanmax(T[param1])))
+            lo_y, hi_y = param_ranges.get(param2, (np.nanmin(T[param2]), np.nanmax(T[param2])))
+            if not (np.isfinite(lo_x) and np.isfinite(hi_x) and hi_x > lo_x and
+                    np.isfinite(lo_y) and np.isfinite(hi_y) and hi_y > lo_y):
+                print(f"Skipping gen {gen}: invalid parameter ranges.")
+                skipped.append(gen)
+                continue
 
-                xg_c = np.linspace(lo_x_c, hi_x_c, grid_n)
-                yg_c = np.linspace(lo_y_c, hi_y_c, grid_n)
-                Xg_c, Yg_c = np.meshgrid(xg_c, yg_c)
+            xg = np.linspace(lo_x, hi_x, grid_n)
+            yg = np.linspace(lo_y, hi_y, grid_n)
+            Xg, Yg = np.meshgrid(xg, yg)
 
-                xC = T_comb[param1].to_numpy(float)
-                yC = T_comb[param2].to_numpy(float)
-                goodC = np.isfinite(xC) & np.isfinite(yC) & np.isfinite(w_comb)
-                xC, yC, wC = xC[goodC], yC[goodC], w_comb[goodC]
-                if xC.size < 8:
-                    print(f"Skipping gen {gen}: insufficient finite points after filtering (combined).")
-                    skipped.append(gen)
-                    continue
+            xC = T[param1].to_numpy(float)
+            yC = T[param2].to_numpy(float)
+            goodC = np.isfinite(xC) & np.isfinite(yC) & np.isfinite(w_comb)
+            xC, yC, wC = xC[goodC], yC[goodC], w_comb[goodC]
+            if xC.size < 8:
+                print(f"Skipping gen {gen}: insufficient finite points after filtering.")
+                skipped.append(gen)
+                continue
 
-                Zc = _kde_2d(xC, yC, wC, Xg_c, Yg_c)
-                Zc = np.nan_to_num(Zc, nan=0.0, posinf=0.0, neginf=0.0)
-                el_c = _ellipse_from_hpd(Xg_c, Yg_c, Zc, p=p_hpd)
-                if el_c is None:
-                    print(f"Skipping gen {gen}: could not compute ellipse (combined).")
-                    skipped.append(gen)
-                    continue
+            Zc = _kde_2d(xC, yC, wC, Xg, Yg)
+            Zc = np.nan_to_num(Zc, nan=0.0, posinf=0.0, neginf=0.0)
+            el = _ellipse_from_hpd(Xg, Yg, Zc, p=p_hpd)
+            if el is None:
+                print(f"Skipping gen {gen}: could not compute ellipse.")
+                skipped.append(gen)
+                continue
 
-                # ----------------------------
-                # Dotted line: single-posterior (first CSV only)
-                # ----------------------------
-                csv_single = csv_list[0]
-                a_single = UncertaintyAnalysis(results_file=csv_single,
-                                               output_path=os.path.dirname(csv_single) + os.sep)
+            gens_kept.append(gen)
+            semimajors.append(el['a'])
+            print(f"Gen {gen} ({len(csv_list)} CSVs): semimajor axis = {el['a']:.4f}")
 
-                T_single, w_single = _select_by_cutoff_or_percentile(
-                    a_single,
-                    cutoff=None,
-                    fallback_percentile=percentile,
-                    weight_power=weight_power
-                )
-
-                if T_single.empty or len(T_single) < 8:
-                    print(f"Gen {gen}: insufficient data for single-posterior ellipse ({len(T_single)}).")
-                    semimajor_single = np.nan
-                else:
-                    lo_x_s = np.nanmin(T_single[param1])
-                    hi_x_s = np.nanmax(T_single[param1])
-                    lo_y_s = np.nanmin(T_single[param2])
-                    hi_y_s = np.nanmax(T_single[param2])
-
-                    if (np.isfinite(lo_x_s) and np.isfinite(hi_x_s) and hi_x_s > lo_x_s and
-                        np.isfinite(lo_y_s) and np.isfinite(hi_y_s) and hi_y_s > lo_y_s):
-
-                        xg_s = np.linspace(lo_x_s, hi_x_s, grid_n)
-                        yg_s = np.linspace(lo_y_s, hi_y_s, grid_n)
-                        Xg_s, Yg_s = np.meshgrid(xg_s, yg_s)
-
-                        xS = T_single[param1].to_numpy(float)
-                        yS = T_single[param2].to_numpy(float)
-                        wS = np.asarray(w_single, float)
-                        goodS = np.isfinite(xS) & np.isfinite(yS) & np.isfinite(wS)
-                        xS, yS, wS = xS[goodS], yS[goodS], wS[goodS]
-
-                        if xS.size >= 8:
-                            Zs = _kde_2d(xS, yS, wS, Xg_s, Yg_s)
-                            Zs = np.nan_to_num(Zs, nan=0.0, posinf=0.0, neginf=0.0)
-                            el_s = _ellipse_from_hpd(Xg_s, Yg_s, Zs, p=p_hpd)
-                            if el_s is not None:
-                                semimajor_single = el_s['a']
-                            else:
-                                print(f"Gen {gen}: could not compute ellipse (single-posterior).")
-                                semimajor_single = np.nan
-                        else:
-                            print(f"Gen {gen}: insufficient finite points after filtering (single-posterior).")
-                            semimajor_single = np.nan
-                    else:
-                        print(f"Gen {gen}: invalid parameter ranges (single-posterior).")
-                        semimajor_single = np.nan
-
-                gens_kept.append(gen)
-                semimajors_combined.append(el_c['a'])
-                semimajors_single.append(semimajor_single)
-                print(f"Gen {gen} ({len(csv_list)} CSVs): "
-                      f"semimajor (combined) = {el_c['a']:.4f}, "
-                      f"semimajor (single) = {semimajor_single:.4f}" if np.isfinite(semimajor_single)
-                      else f"Gen {gen} ({len(csv_list)} CSVs): semimajor (combined) = {el_c['a']:.4f}, single NaN")
-
-        if not semimajors_combined:
+        if not semimajors:
             print("No valid ellipses computed.")
             sys.exit(0)
 
-        df_out = pd.DataFrame({
-            "generation": gens_kept,
-            "semimajor_combined": semimajors_combined,
-            "semimajor_single": semimajors_single,
-        })
-        df_out.to_csv(
-            os.path.join(save_dir, "semimajor_vs_generations.csv"),
-            index=False
+        pd.DataFrame({"generation": gens_kept, "semimajor": semimajors}).to_csv(
+            os.path.join(save_dir, "semimajor_vs_generations.csv"), index=False
         )
-        print(f"Computed {len(semimajors_combined)} ellipses across {len(all_gens)} generations; "
+        print(f"Computed {len(semimajors)} ellipses across {len(all_gens)} generations; "
               f"skipped {len(skipped)}: {skipped[:10]}{'...' if len(skipped) > 10 else ''}")
 
-        if i == 2:
-            semimajors_combined = [x - 2 for x in semimajors_combined]
-            semimajors_single = [x - 2 for x in semimajors_single]
-
-        semimajors_combined = [x + 0.69 for x in semimajors_combined]
-
-        # Plot: solid = combined, dotted = single-posterior
-        ax.plot(
-            gens_kept,
-            sorted(semimajors_combined, reverse=True),
-            label=str(param_label(param1) + ' vs. ' + param_label(param2)),
-            marker='o',
-            linestyle='-',
-            color=colours[i]
-        )
-
-        # dotted, same colour
-        ax.plot(
-            gens_kept,
-            sorted(semimajors_single, reverse=True),
-            marker='o',
-            linestyle=':',
-            color=colours[i]
-        )
-
+        # Plot
+        ax.plot(gens_kept, sorted(semimajors, reverse = True), label = str(param_label(param1) + ' vs. ' + param_label(param2)), marker='o', linestyle='-', color = colours[i])
         ax.set_xlabel('Generation')
         ax.set_ylabel(r'68\% HPD size')
 
