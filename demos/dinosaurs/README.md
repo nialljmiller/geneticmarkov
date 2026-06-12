@@ -2,7 +2,7 @@
 
 This demo applies the current GeneticMarkov GA+DEMC workflow to a real non-astronomy dataset: Dinosauria fossil occurrence counts from the Paleobiology Database.
 
-The purpose of the demo is to show that the method is not intrinsically tied to Galactic Chemical Evolution. It demonstrates the same kind of mixed categorical and continuous fitting problem in a domain that is easy to understand visually: fossil occurrences through geological time.
+The purpose of the demo is to show the method on a mixed categorical and continuous fitting problem in a domain that is easy to understand visually: fossil occurrences through geological time.
 
 This is a software demonstration, not a paleontological analysis.
 
@@ -14,7 +14,7 @@ At a high level, the model is:
 
     predicted count = baseline + diversity curve * sampling bias * extinction factor
 
-The optimizer searches over both model choices and numerical parameters. This makes the demo structurally similar to the original GCE fitting problem: some parameters choose model families, while others tune continuous values.
+The optimizer searches over both model choices and numerical parameters. This makes the demo structurally representative of the kind of problem GeneticMarkov targets: some parameters choose model families, while others tune continuous values.
 
 The demo then produces the same kind of outputs expected from a serious fitting workflow:
 
@@ -61,7 +61,7 @@ The dinosaur occurrence problem is more useful because it has several features t
 - the likelihood choice itself can vary
 - the result is easy to plot and inspect
 
-The demo is intentionally not astronomy-specific, so users can see the general shape of the method without knowing Galactic Chemical Evolution.
+The demo is intentionally domain-neutral: users can understand the method without needing specialist background knowledge.
 
 ## Parameterization
 
@@ -245,4 +245,4 @@ This example demonstrates the intended direction of the package.
 
 A user should be able to bring a black-box model, define mixed categorical and continuous parameters, run a GA+DEMC search, and get interpretable outputs. The Dinosauria demo shows that workflow in a compact, non-astronomy setting.
 
-It is therefore a useful counterpart to the original GCE application: same optimization machinery, different scientific domain.
+It is therefore a useful demonstration of the same optimization machinery on a different scientific domain.

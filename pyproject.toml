@@ -74,10 +74,8 @@ Issues = "https://github.com/nialljmiller/geneticmarkov/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["geneticmarkov*", "mdf_gce*"]
+include = ["geneticmarkov*"]
 
-[tool.setuptools.package-data]
-mdf_gce = ["*.txt", "*.dat"]
 
 [tool.black]
 line-length = 100
@@ -95,7 +93,7 @@ exclude = '''
 [tool.isort]
 profile = "black"
 line_length = 100
-known_first_party = ["geneticmarkov", "mdf_gce"]
+known_first_party = ["geneticmarkov"]
 
 [tool.mypy]
 python_version = "3.8"

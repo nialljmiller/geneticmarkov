@@ -1,6 +1,6 @@
 import numpy as np
 
-from mdf_gce.core.loss import (
+from geneticmarkov.loss import (
     compute_ks_distance,
     compute_wrmse,
     compute_mae,

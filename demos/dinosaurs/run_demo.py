@@ -13,9 +13,9 @@ It exercises the current package machinery:
 - adaptive Gaussian mutation
 - duplicate prevention
 - DEMC hybrid moves during GA generations
-- Voronoi sparse-region exploration using mdf_gce.core.exploration
-- SMC-DEMC posterior refinement using mdf_gce.core.smc_demc
-- CSV/NPZ/PNG outputs similar in spirit to the GCE workflow
+- Voronoi sparse-region exploration using geneticmarkov.exploration
+- SMC-DEMC posterior refinement using geneticmarkov.smc_demc
+- CSV/NPZ/PNG outputs for the GA+DEMC workflow
 
 This is a package demonstration, not a paleontology result.
 """
@@ -45,8 +45,8 @@ try:
 except Exception:
     HAS_CORNER = False
 
-from mdf_gce.core.exploration import voronoi_explore_dearths
-from mdf_gce.core.smc_demc import Bound, run_smc_demc
+from geneticmarkov.exploration import voronoi_explore_dearths
+from geneticmarkov.smc_demc import Bound, run_smc_demc
 
 
 PBDB_DINOSAURIA_CSV = (

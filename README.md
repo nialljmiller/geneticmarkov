@@ -2,13 +2,13 @@
 
 GeneticMarkov is an in-development Python package for hybrid Genetic Algorithm and Differential Evolution Markov Chain exploration of black-box scientific models.
 
-The package is being extracted from a Galactic Chemical Evolution fitting codebase into a reusable sampler framework. The goal is to provide an interface that feels familiar to users of ensemble MCMC tools, while retaining the global-search behavior of a genetic algorithm and the local refinement behavior of DEMC.
+The goal is to provide an interface that feels familiar to users of ensemble MCMC tools, while retaining the global-search behavior of a genetic algorithm and the local refinement behavior of DEMC.
 
 ## Current status
 
 This repository is in the extraction phase.
 
-The original GCE-specific implementation is still present under `mdf_gce/`. The generic package namespace is `geneticmarkov/`. The immediate development goal is to separate the reusable GA+DEMC machinery from the original astronomy application without replacing or simplifying the existing algorithm.
+The generic package namespace is `geneticmarkov/`. The immediate development goal is to expose the reusable GA+DEMC machinery through a clean, application-agnostic API.
 
 The current working method includes:
 
@@ -60,7 +60,6 @@ For development dependencies:
 ## Repository layout
 
     geneticmarkov/       Generic package namespace under extraction
-    mdf_gce/             Legacy GCE-specific implementation
     demos/               Demonstrations of the method outside the original application
     tests/               Regression tests for existing GA/DEMC components
     docs/                Existing project documentation from the source codebase
@@ -71,7 +70,7 @@ Near-term work:
 
 1. Preserve the current working GA+DEMC behavior with regression tests.
 2. Move generic DEMC, bounds, exploration, operator, and output utilities into `geneticmarkov/`.
-3. Keep the original GCE fitter as an application/example rather than the package core.
+3. Keep application-specific examples separate from the package core.
 4. Build an emcee-like public API around the existing algorithm.
 5. Add more demos and benchmark problems that exercise mixed categorical/continuous fitting.
 

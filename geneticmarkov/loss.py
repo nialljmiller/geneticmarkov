@@ -1,5 +1,5 @@
 """
-Loss functions for MDF_GCE_SMC_DEMC.
+Loss functions for GeneticMarkov.
 
 This module contains all loss/fitness functions for:
 - MDF (Metallicity Distribution Function) fitting

@@ -1,6 +1,6 @@
 import numpy as np
 
-from mdf_gce.core.smc_demc import (
+from geneticmarkov.smc_demc import (
     Bound,
     reflect_to_bounds,
     effective_sample_size,
