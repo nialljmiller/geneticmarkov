@@ -745,7 +745,6 @@ class DinosaurProblem:
             if ind.fitness.valid and len(ind.fitness.values) > 0 and np.isfinite(ind.fitness.values[0])
         ]
         self.smc_loss_offset = min(valid_losses) if valid_losses else 0.0
-        print(f"SMC relative-loss offset: {self.smc_loss_offset:.6f}")
 
         ensemble, chains_df = run_smc_demc(
             X0,
