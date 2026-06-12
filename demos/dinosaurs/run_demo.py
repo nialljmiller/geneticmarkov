@@ -47,6 +47,12 @@ except Exception:
 
 from geneticmarkov.exploration import voronoi_explore_dearths
 from geneticmarkov.smc_demc import Bound, run_smc_demc
+from geneticmarkov.operators import (
+    deduplicate_population,
+    fitness_scale,
+    reflect_scalar,
+    tournament_select,
+)
 
 
 PBDB_DINOSAURIA_CSV = (
@@ -209,14 +215,7 @@ class DinosaurProblem:
         return self.bounds_by_index.get(index, (0.0, 1.0))
 
     def _reflect_at_bounds(self, value: float, lo: float, hi: float) -> float:
-        if lo >= hi:
-            return lo
-        while value < lo or value > hi:
-            if value < lo:
-                value = lo + (lo - value)
-            if value > hi:
-                value = hi - (value - hi)
-        return value
+        return reflect_scalar(value, lo, hi)
 
     def _clip_categorical(self, individual: list[float]) -> None:
         individual[0] = int(np.clip(round(individual[0]), 0, len(CLADE_OPTIONS) - 1))
@@ -430,39 +429,19 @@ class DinosaurProblem:
         return toolbox.population(n=popsize), toolbox
 
     def sel_tournament(self, individuals: list[Any], k: int | None = None, tournsize: int = 3) -> list[Any]:
-        if k is None:
-            k = len(individuals)
-        selected = []
-        for _ in range(k):
-            aspirants = random.sample(individuals, min(tournsize, len(individuals)))
-            selected.append(
-                min(
-                    aspirants,
-                    key=lambda x: x.fitness.values[0] if x.fitness.valid else float("inf"),
-                )
-            )
-        return selected
+        return tournament_select(individuals, k=k, tournsize=tournsize, minimize=True)
 
     def get_fitness_scale(self, individual: list[float]) -> float:
         if not individual.fitness.valid:
             return 1.0
 
-        fitness = individual.fitness.values[0]
-        finite = [
+        recent = [
             r["fitness"]
             for r in self.evaluation_results[-500:]
             if np.isfinite(r.get("fitness", np.inf))
         ]
 
-        if len(finite) < 20:
-            return 1.0
-
-        q25, q75 = np.percentile(finite, [25, 75])
-        if fitness <= q25:
-            return 0.5
-        if fitness <= q75:
-            return 1.0
-        return 1.5
+        return fitness_scale(individual.fitness.values[0], recent, minimize=True)
 
     def crossover(self, ind1: list[float], ind2: list[float], max_bias: float = 0.55):
         f1 = ind1.fitness.values[0] if ind1.fitness.valid else float("inf")
@@ -532,28 +511,12 @@ class DinosaurProblem:
         return individual,
 
     def prevent_duplicates(self, population: list[Any], toolbox: base.Toolbox) -> list[Any]:
-        seen = set()
-        unique = []
-
-        for ind in population:
-            key = tuple(round(float(x), 6) for x in ind)
-            if key in seen:
-                new_ind = toolbox.clone(ind)
-                for i in self.continuous_indices:
-                    lo, hi = self.get_param_bounds(i)
-                    new_ind[i] = self._reflect_at_bounds(
-                        new_ind[i] + random.gauss(0.0, (hi - lo) * 0.002),
-                        lo,
-                        hi,
-                    )
-                if hasattr(new_ind.fitness, "values"):
-                    del new_ind.fitness.values
-                unique.append(new_ind)
-            else:
-                seen.add(key)
-                unique.append(ind)
-
-        return unique
+        return deduplicate_population(
+            population,
+            continuous_indices=self.continuous_indices,
+            get_bounds=self.get_param_bounds,
+            clone=toolbox.clone,
+        )
 
     def apply_demc_hybrid_moves(self, population: list[Any], toolbox: base.Toolbox) -> None:
         n_walkers = len(population)
