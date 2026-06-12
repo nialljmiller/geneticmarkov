@@ -70,3 +70,6 @@ demos/dinosaur_extinction_output/
 demos/dinosaur_extinction_data/pbdb_dinosauria_occurrences.csv
 demos/pbdb_data.csv
 demos/demos/
+
+demos/dinosaurs/output/
+demos/dinosaurs/data/pbdb_dinosauria_occurrences.csv

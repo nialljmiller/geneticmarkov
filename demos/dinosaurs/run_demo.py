@@ -1071,8 +1071,8 @@ def make_output_dirs(config: DemoConfig) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the Dinosauria GeneticMarkov demo.")
-    parser.add_argument("--output", default="demos/dinosaur_extinction_output")
-    parser.add_argument("--data-dir", default="demos/dinosaur_extinction_data")
+    parser.add_argument("--output", default="demos/dinosaurs/output")
+    parser.add_argument("--data-dir", default="demos/dinosaurs/data")
     parser.add_argument("--popsize", type=int, default=96)
     parser.add_argument("--generations", type=int, default=80)
     parser.add_argument("--seed", type=int, default=42)
@@ -1104,8 +1104,13 @@ def main() -> None:
     except Exception:
         pass
 
-    raw = fetch_pbdb_data(config.data_dir, force=args.force_download)
-    counts = bin_occurrences(raw, config)
+    binned_path = config.data_dir / "dinosauria_binned_counts.csv"
+    if binned_path.exists() and not args.force_download:
+        print(f"Using cached binned data: {binned_path}")
+        counts = pd.read_csv(binned_path)
+    else:
+        raw = fetch_pbdb_data(config.data_dir, force=args.force_download)
+        counts = bin_occurrences(raw, config)
 
     problem = DinosaurProblem(counts, config)
     population = problem.run_ga()
