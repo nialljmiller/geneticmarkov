@@ -47,6 +47,7 @@ except Exception:
 
 from geneticmarkov.exploration import voronoi_explore_dearths
 from geneticmarkov.smc_demc import Bound, run_smc_demc
+from geneticmarkov.hybrid import apply_demc_hybrid_moves
 from geneticmarkov.operators import (
     deduplicate_population,
     fitness_scale,
@@ -519,61 +520,21 @@ class DinosaurProblem:
         )
 
     def apply_demc_hybrid_moves(self, population: list[Any], toolbox: base.Toolbox) -> None:
-        n_walkers = len(population)
-        n_update = max(1, int(n_walkers * self.config.demc_fraction))
-
-        ranked = sorted(
-            range(n_walkers),
-            key=lambda i: population[i].fitness.values[0] if population[i].fitness.valid else float("inf"),
-            reverse=True,
+        accepted, attempted = apply_demc_hybrid_moves(
+            population,
+            evaluate=toolbox.evaluate,
+            record_result=self._record_evaluation_result,
+            continuous_indices=self.continuous_indices,
+            get_bounds=self.get_param_bounds,
+            repair=self._repair_individual,
+            clone=toolbox.clone,
+            fraction=self.config.demc_fraction,
+            generation=self.gen,
+            big_step_every=6,
         )
-        update_indices = ranked[:n_update]
 
-        d = len(self.continuous_indices)
-        gamma = 2.38 / np.sqrt(2.0 * d)
-
-        if self.gen % 6 == 0:
-            gamma = 1.0
-
-        accepted = 0
-
-        for idx in update_indices:
-            others = [i for i in range(n_walkers) if i != idx]
-            if len(others) < 2:
-                continue
-
-            r1, r2 = random.sample(others, 2)
-
-            current = population[idx]
-            proposal = toolbox.clone(current)
-
-            for i in self.continuous_indices:
-                diff = population[r1][i] - population[r2][i]
-                proposal[i] = current[i] + gamma * diff + random.gauss(0.0, 1e-6)
-
-                lo, hi = self.get_param_bounds(i)
-                proposal[i] = self._reflect_at_bounds(proposal[i], lo, hi)
-
-            self._repair_individual(proposal)
-
-            if hasattr(proposal.fitness, "values"):
-                del proposal.fitness.values
-
-            fit, result = toolbox.evaluate(proposal)
-            proposal.fitness.values = fit
-            self._record_evaluation_result(result)
-
-            current_loss = current.fitness.values[0]
-            proposal_loss = proposal.fitness.values[0]
-            log_alpha = -(proposal_loss - current_loss)
-
-            if np.log(random.random()) < log_alpha:
-                population[idx][:] = proposal[:]
-                population[idx].fitness.values = proposal.fitness.values
-                accepted += 1
-
-        if n_update > 0:
-            print(f"  DE-MC: {accepted}/{n_update} accepted ({100.0 * accepted / n_update:.1f}%)")
+        if attempted > 0:
+            print(f"  DE-MC: {accepted}/{attempted} accepted ({100.0 * accepted / attempted:.1f}%)")
 
     def run_ga(self) -> list[Any]:
         population, toolbox = self.init_population(self.config.popsize)
